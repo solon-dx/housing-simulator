@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>賃貸 VS 持ち家 - 住宅シミュレーター</title>
+<link rel="stylesheet" href="common.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  .page-title {
+    text-align: center;
+    padding: 20px 0 8px;
+  }
+  .page-title h2 { font-size: 1.4rem; color: var(--primary); }
+  .page-title p { font-size: 0.85rem; color: var(--text-light); margin-top: 4px; }
+
+  /* 年齢区分の入力行 */
+  .age-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto 1fr auto;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+  }
+  .age-row input {
+    width: 60px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: right;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .age-row input:focus { border-color: var(--primary-light); }
+  .age-row .age-label { color: var(--text-light); font-weight: 600; white-space: nowrap; }
+
+  .add-age-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 8px 16px;
+    color: var(--text-light);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    margin-top: 4px;
+  }
+  .add-age-btn:hover {
+    border-color: var(--primary-light);
+    color: var(--primary-light);
+  }
+
+  .remove-age-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 4px;
+    line-height: 1;
+  }
+
+  #results { display: none; }
+
+  .crossover-box {
+    background: #fef9e7;
+    border: 2px solid #f9e79f;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-top: 16px;
+    text-align: center;
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+  .crossover-box strong { color: var(--accent); font-size: 1.2rem; }
+
+  .advice-box {
+    background: #eaf2f8;
+    border-left: 4px solid var(--primary-light);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin-top: 16px;
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin-top: 16px;
+  }
+  .compare-table th {
+    padding: 10px 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .compare-table th:first-child { background: #f8f9fa; color: var(--text); text-align: left; }
+  .compare-table th.rent { background: var(--primary-light); color: #fff; }
+  .compare-table th.buy { background: var(--warning); color: #fff; }
+  .compare-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+  }
+  .compare-table td:first-child { text-align: left; font-weight: 600; color: var(--text-light); }
+  .compare-table tr:nth-child(even) { background: #f8f9fa; }
+  .compare-table tr:last-child td { border-bottom: 2px solid var(--primary); font-weight: 700; }
+
+  @media (max-width: 640px) {
+    .age-row { grid-template-columns: auto 1fr auto; font-size: 0.8rem; }
+    .age-row input { width: 50px; font-size: 0.9rem; padding: 6px 4px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><a href="index.html">🏠 住宅シミュレーター</a></div>
+  <nav>
+    <a href="sim1-affordable.html">購入可能額</a>
+    <a href="sim2-rent-vs-buy.html" class="active">賃貸VS持ち家</a>
+    <a href="sim3-now-vs-later.html">今VS将来</a>
+    <a href="sim4-mansion-vs-house.html">マンションVS戸建て</a>
+    <a href="loan-simulator.html">ローン計算</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="page-title">
+    <h2>🏘️ 「賃貸」と「持ち家」、生涯の住居コストは？</h2>
+    <p>賃貸と持ち家の生涯住居コストを比較してみましょう</p>
+  </div>
+
+  <div class="card">
+    <div class="compare-layout">
+      <!-- 左: 賃貸 -->
+      <div class="compare-side left">
+        <div class="side-title">ずっと賃貸生活の場合</div>
+
+        <div id="ageRows">
+          <div class="age-row" data-row="0">
+            <input type="number" class="age-from" value="32" min="20" max="90"> <span class="age-label">歳〜</span>
+            <input type="number" class="age-to" value="37" min="20" max="90"> <span class="age-label">歳</span>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input type="number" class="rent-amount" value="8.5" min="0" max="100" step="0.5" style="width:70px">
+              <span class="age-label">万円／月</span>
+            </div>
+          </div>
+          <div class="age-row" data-row="1">
+            <input type="number" class="age-from" value="38" min="20" max="90"> <span class="age-label">歳〜</span>
+            <input type="number" class="age-to" value="47" min="20" max="90"> <span class="age-label">歳</span>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input type="number" class="rent-amount" value="10.0" min="0" max="100" step="0.5" style="width:70px">
+              <span class="age-label">万円／月</span>
+            </div>
+          </div>
+          <div class="age-row" data-row="2">
+            <input type="number" class="age-from" value="48" min="20" max="90"> <span class="age-label">歳〜</span>
+            <input type="number" class="age-to" value="85" min="20" max="90"> <span class="age-label">歳</span>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input type="number" class="rent-amount" value="12.0" min="0" max="100" step="0.5" style="width:70px">
+              <span class="age-label">万円／月</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 12px;">
+          <label>更新料（2年ごと）</label>
+          <div class="input-wrap">
+            <input type="number" id="renewalFee" value="1" min="0" max="12" step="0.5">
+            <span class="unit">ヶ月分</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右: 持ち家 -->
+      <div class="compare-side right">
+        <div class="side-title">持ち家購入の場合</div>
+
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>物件価格は？</label>
+          <div class="input-wrap">
+            <input type="number" id="propertyPrice" value="2500" min="100" max="50000" step="100">
+            <span class="unit">万円</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>頭金は？</label>
+          <div class="input-wrap">
+            <input type="number" id="downPayment" value="300" min="0" max="50000" step="10">
+            <span class="unit">万円</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>ローン返済期間は？</label>
+          <div class="input-wrap">
+            <input type="number" id="loanYears" value="35" min="5" max="50" step="1">
+            <span class="unit">年</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>ローン金利は？</label>
+          <div class="input-wrap">
+            <input type="number" id="loanRate" value="1.500" min="0.1" max="10" step="0.001">
+            <span class="unit">％</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>固定資産税・維持費は？</label>
+          <div class="input-wrap">
+            <input type="number" id="annualMaintenance" value="15" min="0" max="200" step="1">
+            <span class="unit">万円／年</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>もし万一の事が起きたら？（団信）</label>
+          <div class="input-wrap">
+            <input type="number" id="accidentYear" value="0" min="0" max="50" step="1">
+            <span class="unit">年後</span>
+          </div>
+          <div style="font-size:0.75rem;color:var(--text-light);margin-top:4px;">※ 0年後＝万一のことは想定しない</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-calc" onclick="calculate()">計 算</button>
+  </div>
+
+  <!-- 結果 -->
+  <div id="results">
+    <div class="card">
+      <div class="card-title">📊 賃貸と持ち家の住居費比較グラフ</div>
+      <div class="chart-container" style="height: 400px;">
+        <canvas id="compareChart"></canvas>
+      </div>
+      <div class="crossover-box" id="crossoverBox"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 コスト内訳比較</div>
+      <table class="compare-table" id="compareTable">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="rent">賃貸</th>
+            <th class="buy">持ち家</th>
+          </tr>
+        </thead>
+        <tbody id="compareBody"></tbody>
+      </table>
+      <div class="advice-box" id="adviceBox"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  ※ シミュレーション結果はあくまで目安です。実際の費用は個別の条件により異なります。<br>
+  ※ 元利均等返済方式による概算です。借入金利は保証料込みの金利をご入力ください。団信保険料・事務手数料等は含まれておりません。<br>
+  ※ 固定資産税・都市計画税・住宅の経年劣化による資産価値の変動は考慮しておりません。<br>
+  ※ 家賃・更新料は将来の変動を見込んでおらず、一定として計算しています。<br>
+  ※ 個別・具体的な税務相談や税額計算は、必ず税理士にご相談ください。<br>
+  ※ 本シミュレーションの情報は一般的な事例を想定した参考情報であり、これにより得られた結果を起因として利用者または第三者が損害を被った場合であっても、当社は一切の責任を負いかねます。<br>
+  <a href="index.html" style="color: var(--primary-light);">← TOPに戻る</a>
+</footer>
+
+<script>
+let compareChart = null;
+
+function calculate() {
+  // ===== 賃貸データ収集 =====
+  const ageRows = document.querySelectorAll('#ageRows .age-row');
+  const rentPeriods = [];
+  ageRows.forEach(row => {
+    const from = parseInt(row.querySelector('.age-from').value);
+    const to = parseInt(row.querySelector('.age-to').value);
+    const rent = parseFloat(row.querySelector('.rent-amount').value) * 10000; // 円/月
+    if (!isNaN(from) && !isNaN(to) && !isNaN(rent) && to >= from) {
+      rentPeriods.push({ from, to, rent });
+    }
+  });
+
+  if (rentPeriods.length === 0) { alert('賃貸の年齢区分を入力してください'); return; }
+
+  const renewalMonths = parseFloat(document.getElementById('renewalFee').value);
+  const startAge = rentPeriods[0].from;
+  const endAge = rentPeriods[rentPeriods.length - 1].to;
+  const totalYears = endAge - startAge + 1;
+
+  // ===== 持ち家データ =====
+  const propertyPrice = parseFloat(document.getElementById('propertyPrice').value) * 10000;
+  const downPayment = parseFloat(document.getElementById('downPayment').value) * 10000;
+  const loanYears = parseInt(document.getElementById('loanYears').value);
+  const loanRate = parseFloat(document.getElementById('loanRate').value) / 100;
+  const annualMaint = parseFloat(document.getElementById('annualMaintenance').value) * 10000;
+  const accidentYear = parseInt(document.getElementById('accidentYear').value);
+
+  const loanAmount = propertyPrice - downPayment;
+  const r = loanRate / 12;
+  const n = loanYears * 12;
+  const monthlyLoan = loanAmount * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+  const totalLoanPayment = monthlyLoan * n;
+
+  // ===== 年ごとの累計コスト計算 =====
+  const rentCumulative = [];
+  const buyCumulative = [];
+  let rentTotal = 0;
+  let buyTotal = downPayment; // 頭金は初年度に支払い
+  let loanBalance = loanAmount;
+  let loanPaidOff = false;
+  let accidentHappened = false;
+  let totalRentOnly = 0;
+  let totalRenewal = 0;
+  let totalLoanPaid = 0;
+  let totalMaintPaid = 0;
+
+  for (let y = 0; y < totalYears; y++) {
+    const age = startAge + y;
+
+    // 賃貸: その年の家賃
+    let yearRent = 0;
+    for (const p of rentPeriods) {
+      if (age >= p.from && age <= p.to) {
+        yearRent = p.rent * 12;
+        break;
+      }
+    }
+    // 更新料（2年ごと）
+    let renewal = 0;
+    if (y > 0 && y % 2 === 0 && renewalMonths > 0) {
+      // 更新料 = その時点の月額家賃 × 月数
+      for (const p of rentPeriods) {
+        if (age >= p.from && age <= p.to) {
+          renewal = p.rent * renewalMonths;
+          break;
+        }
+      }
+    }
+    rentTotal += yearRent + renewal;
+    totalRentOnly += yearRent;
+    totalRenewal += renewal;
+    rentCumulative.push({ age, total: rentTotal });
+
+    // 持ち家: ローン返済 + 維持費
+    let yearLoan = 0;
+    if (!loanPaidOff && !accidentHappened) {
+      if (y < loanYears) {
+        yearLoan = monthlyLoan * 12;
+        // 残高計算
+        for (let m = 0; m < 12; m++) {
+          const interest = loanBalance * r;
+          const principal = monthlyLoan - interest;
+          loanBalance = Math.max(0, loanBalance - principal);
+        }
+      } else {
+        loanPaidOff = true;
+      }
+    }
+
+    // 団信: 万一の場合、ローン残高が0に
+    if (accidentYear > 0 && y === accidentYear && !accidentHappened) {
+      accidentHappened = true;
+      loanBalance = 0;
+      // この年の残りのローンは免除（簡易計算として年の途中を考慮しない）
+    }
+
+    buyTotal += yearLoan + annualMaint;
+    totalLoanPaid += yearLoan;
+    totalMaintPaid += annualMaint;
+    buyCumulative.push({ age, total: buyTotal });
+  }
+
+  // ===== 損益分岐点 =====
+  let crossoverAge = null;
+  for (let i = 1; i < rentCumulative.length; i++) {
+    if (rentCumulative[i - 1].total <= buyCumulative[i - 1].total &&
+        rentCumulative[i].total > buyCumulative[i].total) {
+      crossoverAge = rentCumulative[i].age;
+      break;
+    }
+  }
+
+  // ===== グラフ描画 =====
+  const labels = rentCumulative.map(d => d.age);
+  const ctx = document.getElementById('compareChart').getContext('2d');
+  if (compareChart) compareChart.destroy();
+
+  compareChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels.map(a => a + '歳'),
+      datasets: [
+        {
+          label: '賃貸（累計）',
+          data: rentCumulative.map(d => Math.round(d.total / 10000)),
+          borderColor: '#2980b9',
+          backgroundColor: 'rgba(41,128,185,0.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 2,
+          borderWidth: 3
+        },
+        {
+          label: '持ち家（累計）',
+          data: buyCumulative.map(d => Math.round(d.total / 10000)),
+          borderColor: '#f39c12',
+          backgroundColor: 'rgba(243,156,18,0.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 2,
+          borderWidth: 3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + ctx.raw.toLocaleString() + '万円'
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            maxTicksLimit: 15,
+            callback: function(val, idx) {
+              const age = labels[idx];
+              return age % 5 === 0 ? age + '歳' : '';
+            }
+          }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { callback: v => v.toLocaleString() + '万' }
+        }
+      }
+    }
+  });
+
+  // ===== 分岐点メッセージ =====
+  const crossoverBox = document.getElementById('crossoverBox');
+  const finalRent = rentCumulative[rentCumulative.length - 1].total;
+  const finalBuy = buyCumulative[buyCumulative.length - 1].total;
+
+  if (crossoverAge) {
+    crossoverBox.innerHTML =
+      `<strong>${crossoverAge}歳</strong>を境に、持ち家の方が累計コストが低くなります。<br>` +
+      `${endAge}歳時点で、持ち家は賃貸より<strong>${formatMan(finalRent - finalBuy)}</strong>お得です。`;
+  } else if (finalBuy < finalRent) {
+    crossoverBox.innerHTML =
+      `シミュレーション期間を通じて、持ち家の方がお得です。<br>` +
+      `${endAge}歳時点の差額: <strong>${formatMan(finalRent - finalBuy)}</strong>`;
+  } else {
+    crossoverBox.innerHTML =
+      `シミュレーション期間（${endAge}歳まで）では、賃貸の方がコストが低い結果になりました。<br>` +
+      `${endAge}歳時点の差額: <strong>${formatMan(finalBuy - finalRent)}</strong>（賃貸が安い）`;
+  }
+
+  // ===== 比較テーブル =====
+  const tbody = document.getElementById('compareBody');
+  tbody.innerHTML = '';
+  const rows = [
+    ['頭金', '-', formatManTable(downPayment)],
+    ['家賃（累計）', formatManTable(totalRentOnly), '-'],
+    ['更新料（累計）', formatManTable(totalRenewal), '-'],
+    ['ローン返済額（累計）', '-', formatManTable(totalLoanPaid)],
+    ['維持費・固定資産税（累計）', '-', formatManTable(totalMaintPaid)],
+    ['合計', formatManTable(Math.round(finalRent)), formatManTable(Math.round(finalBuy))]
+  ];
+  rows.forEach(([label, rent, buy]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${label}</td><td>${rent}</td><td>${buy}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // ===== アドバイス =====
+  const adviceBox = document.getElementById('adviceBox');
+  const diff = finalRent - finalBuy;
+  if (diff > 0) {
+    adviceBox.innerHTML =
+      `${endAge}歳まで住み続けた場合、持ち家の方が<strong>${formatMan(diff)}</strong>お得という結果になりました。` +
+      `<br>ただし、持ち家には資産価値の変動リスクや、将来の大規模修繕費用なども考慮する必要があります。` +
+      `<br>※ 持ち家の場合の資産価値（売却可能額）は計上していません。`;
+  } else {
+    adviceBox.innerHTML =
+      `この条件では、${endAge}歳時点で賃貸の方が<strong>${formatMan(Math.abs(diff))}</strong>安い結果となりました。` +
+      `<br>ただし、賃貸は資産が残らない一方、持ち家は物件の資産価値が残ります。` +
+      `<br>※ 持ち家の場合の資産価値（売却可能額）は計上していません。`;
+  }
+
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+function formatMan(val) {
+  const man = Math.round(val / 10000);
+  if (man >= 10000) return (man / 10000).toFixed(1) + '億円';
+  return man.toLocaleString() + '万円';
+}
+
+function formatManTable(val) {
+  if (val === 0) return '-';
+  const man = Math.round(val / 10000);
+  return man.toLocaleString() + '万円';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  calculate();
+});
+</script>
+
+</body>
+</html>

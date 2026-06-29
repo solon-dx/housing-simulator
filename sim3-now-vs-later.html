@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今すぐ購入 VS 頭金を貯めてから - 住宅シミュレーター</title>
+<link rel="stylesheet" href="common.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  .page-title { text-align: center; padding: 20px 0 8px; }
+  .page-title h2 { font-size: 1.4rem; color: var(--primary); }
+  .page-title p { font-size: 0.85rem; color: var(--text-light); margin-top: 4px; }
+  #results { display: none; }
+
+  .vs-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: -10px 0 16px;
+    position: relative;
+    z-index: 1;
+  }
+  .vs-badge span {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 800;
+    font-size: 1rem;
+    padding: 6px 16px;
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(231,76,60,0.3);
+  }
+
+  .summary-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .summary-card {
+    text-align: center;
+    padding: 20px 12px;
+    border-radius: 12px;
+    border: 2px solid;
+  }
+  .summary-card.now { border-color: var(--primary-light); background: rgba(41,128,185,0.04); }
+  .summary-card.later { border-color: var(--warning); background: rgba(243,156,18,0.04); }
+  .summary-card .sc-label { font-size: 0.85rem; color: var(--text-light); margin-bottom: 6px; }
+  .summary-card .sc-value { font-size: 1.8rem; font-weight: 800; }
+  .summary-card.now .sc-value { color: var(--primary-light); }
+  .summary-card.later .sc-value { color: var(--warning); }
+  .summary-card .sc-sub { font-size: 0.8rem; color: var(--text-light); margin-top: 6px; }
+
+  .diff-box {
+    text-align: center;
+    padding: 16px;
+    background: #fef9e7;
+    border: 2px solid #f9e79f;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+  .diff-box strong { color: var(--accent); font-size: 1.3rem; }
+
+  .advice-box {
+    background: #eaf2f8;
+    border-left: 4px solid var(--primary-light);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin-top: 16px;
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin-top: 12px;
+  }
+  .compare-table th { padding: 10px 12px; font-weight: 600; white-space: nowrap; }
+  .compare-table th:first-child { background: #f8f9fa; color: var(--text); text-align: left; }
+  .compare-table th.now { background: var(--primary-light); color: #fff; }
+  .compare-table th.later { background: var(--warning); color: #fff; }
+  .compare-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: right; }
+  .compare-table td:first-child { text-align: left; font-weight: 600; color: var(--text-light); }
+  .compare-table tr:nth-child(even) { background: #f8f9fa; }
+  .compare-table tr:last-child td { border-bottom: 2px solid var(--primary); font-weight: 700; }
+
+  @media (max-width: 640px) {
+    .summary-cards { grid-template-columns: 1fr; }
+    .summary-card .sc-value { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><a href="index.html">🏠 住宅シミュレーター</a></div>
+  <nav>
+    <a href="sim1-affordable.html">購入可能額</a>
+    <a href="sim2-rent-vs-buy.html">賃貸VS持ち家</a>
+    <a href="sim3-now-vs-later.html" class="active">今VS将来</a>
+    <a href="sim4-mansion-vs-house.html">マンションVS戸建て</a>
+    <a href="loan-simulator.html">ローン計算</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="page-title">
+    <h2>⏳ 今買うの？それとも頭金を貯めてから？</h2>
+    <p>今すぐ購入した場合と、頭金を貯めてから購入した場合の総費用を比較します</p>
+  </div>
+
+  <div class="card">
+    <div class="compare-layout">
+      <!-- 左: 今購入 -->
+      <div class="compare-side left">
+        <div class="side-title">今、購入する場合</div>
+
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>現在の年齢は？</label>
+          <div class="input-wrap">
+            <input type="number" id="currentAge" value="32" min="20" max="70">
+            <span class="unit">歳</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>購入物件価格は？</label>
+          <div class="input-wrap">
+            <input type="number" id="priceNow" value="3000" min="100" max="50000" step="100">
+            <span class="unit">万円</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>現在の自己資金は？</label>
+          <div class="input-wrap">
+            <input type="number" id="savingsNow" value="300" min="0" max="50000" step="10">
+            <span class="unit">万円</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>ローン返済期間は？</label>
+          <div class="input-wrap">
+            <input type="number" id="yearsNow" value="35" min="5" max="50" step="1">
+            <span class="unit">年</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>ローン金利は？</label>
+          <div class="input-wrap">
+            <input type="number" id="rateNow" value="1.000" min="0.1" max="10" step="0.001">
+            <span class="unit">％</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右: 将来購入 -->
+      <div class="compare-side right">
+        <div class="side-title">将来、購入する場合</div>
+
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>何年後に購入？</label>
+          <div class="input-wrap">
+            <input type="number" id="waitYears" value="3" min="1" max="30" step="1">
+            <span class="unit">年後</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>その間の毎月積立金は？</label>
+          <div class="input-wrap">
+            <input type="number" id="monthlySaving" value="3.0" min="0" max="100" step="0.5">
+            <span class="unit">万円／月</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>物件価格上昇率は？</label>
+          <div class="input-wrap">
+            <input type="number" id="priceRise" value="0.00" min="-5" max="10" step="0.01">
+            <span class="unit">％／年</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>将来購入時のローン金利は？</label>
+          <div class="input-wrap">
+            <input type="number" id="rateLater" value="2.000" min="0.1" max="10" step="0.001">
+            <span class="unit">％</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>将来購入時の返済期間は？</label>
+          <div class="input-wrap">
+            <input type="number" id="yearsLater" value="35" min="5" max="50" step="1">
+            <span class="unit">年</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>購入までの毎月の家賃は？</label>
+          <div class="input-wrap">
+            <input type="number" id="rentDuring" value="8.0" min="0" max="100" step="0.5">
+            <span class="unit">万円／月</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-calc" onclick="calculate()">計 算</button>
+  </div>
+
+  <!-- 結果 -->
+  <div id="results">
+    <div class="card">
+      <div class="card-title">📊 費用総額比較</div>
+
+      <div class="summary-cards">
+        <div class="summary-card now">
+          <div class="sc-label">今、購入する場合の総費用</div>
+          <div class="sc-value" id="totalNow">-</div>
+          <div class="sc-sub" id="subNow"></div>
+        </div>
+        <div class="summary-card later">
+          <div class="sc-label">将来、購入する場合の総費用</div>
+          <div class="sc-value" id="totalLater">-</div>
+          <div class="sc-sub" id="subLater"></div>
+        </div>
+      </div>
+
+      <div class="diff-box" id="diffBox"></div>
+
+      <div class="chart-container" style="height: 350px;">
+        <canvas id="compareChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 内訳比較</div>
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="now">今、購入</th>
+            <th class="later">将来、購入</th>
+          </tr>
+        </thead>
+        <tbody id="compareBody"></tbody>
+      </table>
+      <div class="advice-box" id="adviceBox"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  ※ シミュレーション結果はあくまで目安です。将来の金利・物件価格は予測に基づくものです。<br>
+  ※ 元利均等返済方式による概算です。借入金利は保証料込みの金利をご入力ください。団信保険料・事務手数料等は含まれておりません。<br>
+  ※ 物件価格の上昇率・将来の金利は仮定値であり、実際の市場動向を保証するものではありません。<br>
+  ※ 個別・具体的な税務相談や税額計算は、必ず税理士にご相談ください。<br>
+  ※ 本シミュレーションの情報は一般的な事例を想定した参考情報であり、これにより得られた結果を起因として利用者または第三者が損害を被った場合であっても、当社は一切の責任を負いかねます。<br>
+  <a href="index.html" style="color: var(--primary-light);">← TOPに戻る</a>
+</footer>
+
+<script>
+let compareChart = null;
+
+function calculate() {
+  // ===== 入力値取得 =====
+  const currentAge = parseInt(document.getElementById('currentAge').value);
+  const priceNow = parseFloat(document.getElementById('priceNow').value) * 10000;
+  const savingsNow = parseFloat(document.getElementById('savingsNow').value) * 10000;
+  const yearsNow = parseInt(document.getElementById('yearsNow').value);
+  const rateNow = parseFloat(document.getElementById('rateNow').value) / 100;
+
+  const waitYears = parseInt(document.getElementById('waitYears').value);
+  const monthlySaving = parseFloat(document.getElementById('monthlySaving').value) * 10000;
+  const priceRise = parseFloat(document.getElementById('priceRise').value) / 100;
+  const rateLater = parseFloat(document.getElementById('rateLater').value) / 100;
+  const yearsLater = parseInt(document.getElementById('yearsLater').value);
+  const rentDuring = parseFloat(document.getElementById('rentDuring').value) * 10000;
+
+  // ===== 今購入する場合 =====
+  const loanNow = priceNow - savingsNow;
+  const rN = rateNow / 12;
+  const nN = yearsNow * 12;
+  const monthlyNow = loanNow * rN * Math.pow(1 + rN, nN) / (Math.pow(1 + rN, nN) - 1);
+  const totalLoanNow = monthlyNow * nN;
+  const totalNow = savingsNow + totalLoanNow;
+
+  // ===== 将来購入する場合 =====
+  // 積立による頭金
+  const futureSavings = savingsNow + (monthlySaving * 12 * waitYears);
+  // 物件価格上昇
+  const futurePrice = priceNow * Math.pow(1 + priceRise, waitYears);
+  // 待機中の家賃
+  const totalRent = rentDuring * 12 * waitYears;
+  // ローン
+  const loanLater = Math.max(0, futurePrice - futureSavings);
+  const rL = rateLater / 12;
+  const nL = yearsLater * 12;
+  let monthlyLater = 0, totalLoanLater = 0;
+  if (loanLater > 0) {
+    monthlyLater = loanLater * rL * Math.pow(1 + rL, nL) / (Math.pow(1 + rL, nL) - 1);
+    totalLoanLater = monthlyLater * nL;
+  }
+  const totalLater = futureSavings + totalLoanLater + totalRent;
+
+  // 定年時残高の比較（参考情報）
+  const retireAge = 65;
+  // 今購入: 定年時のローン残回数
+  const nowLoanEndAge = currentAge + yearsNow;
+  // 将来購入: 定年時のローン残回数
+  const laterLoanEndAge = currentAge + waitYears + yearsLater;
+
+  // ===== 結果表示 =====
+  document.getElementById('totalNow').textContent = formatMan(Math.round(totalNow));
+  document.getElementById('subNow').textContent = `月々返済: ${formatManSmall(Math.round(monthlyNow))} × ${yearsNow}年`;
+
+  document.getElementById('totalLater').textContent = formatMan(Math.round(totalLater));
+  if (loanLater > 0) {
+    document.getElementById('subLater').textContent = `月々返済: ${formatManSmall(Math.round(monthlyLater))} × ${yearsLater}年`;
+  } else {
+    document.getElementById('subLater').textContent = '一括購入（ローン不要）';
+  }
+
+  // 差額
+  const diff = totalNow - totalLater;
+  const diffBox = document.getElementById('diffBox');
+  if (diff > 0) {
+    diffBox.innerHTML = `将来購入の方が<strong>${formatMan(Math.abs(Math.round(diff)))}</strong>お得です`;
+  } else if (diff < 0) {
+    diffBox.innerHTML = `今すぐ購入の方が<strong>${formatMan(Math.abs(Math.round(diff)))}</strong>お得です`;
+  } else {
+    diffBox.innerHTML = '両者の総費用はほぼ同じです';
+  }
+
+  // ===== 内訳テーブル =====
+  const tbody = document.getElementById('compareBody');
+  tbody.innerHTML = '';
+  const rows = [
+    ['頭金（自己資金）', fmt(savingsNow), fmt(futureSavings)],
+    ['借入額', fmt(loanNow), fmt(loanLater)],
+    ['月々返済額', formatManSmall(Math.round(monthlyNow)), loanLater > 0 ? formatManSmall(Math.round(monthlyLater)) : '-'],
+    ['ローン返済総額', fmt(Math.round(totalLoanNow)), fmt(Math.round(totalLoanLater))],
+    ['待機中の家賃', '-', fmt(Math.round(totalRent))],
+    ['物件価格', fmt(priceNow), fmt(Math.round(futurePrice))],
+    ['ローン完済年齢', nowLoanEndAge + '歳', (currentAge + waitYears + yearsLater) + '歳'],
+    ['総費用', fmt(Math.round(totalNow)), fmt(Math.round(totalLater))]
+  ];
+  rows.forEach(([label, now, later]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${label}</td><td>${now}</td><td>${later}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // ===== グラフ =====
+  drawChart(totalNow, totalLater, savingsNow, totalLoanNow, futureSavings, totalLoanLater, totalRent);
+
+  // ===== アドバイス =====
+  const advice = document.getElementById('adviceBox');
+  let text = '';
+  if (diff < 0) {
+    text = `今すぐ購入した方が総費用で<strong>${formatMan(Math.abs(Math.round(diff)))}</strong>安くなります。`;
+    if (rateLater > rateNow) {
+      text += `<br>将来の金利上昇（${(rateNow*100).toFixed(1)}% → ${(rateLater*100).toFixed(1)}%）が大きく影響しています。`;
+    }
+  } else {
+    text += `頭金を貯めてから購入した方が総費用で<strong>${formatMan(Math.abs(Math.round(diff)))}</strong>安くなります。`;
+    if (monthlySaving > 0) {
+      text += `<br>${waitYears}年間で${formatMan(monthlySaving * 12 * waitYears)}の積立ができるため、借入額を抑えられます。`;
+    }
+  }
+  if (nowLoanEndAge > retireAge || laterLoanEndAge > retireAge) {
+    text += `<br><br>⚠️ `;
+    if (nowLoanEndAge > retireAge) text += `今購入の場合、ローン完済は${nowLoanEndAge}歳で定年後まで続きます。`;
+    if (laterLoanEndAge > retireAge) text += `将来購入の場合、ローン完済は${laterLoanEndAge}歳で定年後まで続きます。`;
+    text += `繰上返済の検討をおすすめします。`;
+  }
+  advice.innerHTML = text;
+
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+function drawChart(totalNow, totalLater, savNow, loanNow, savLater, loanLater, rent) {
+  const ctx = document.getElementById('compareChart').getContext('2d');
+  if (compareChart) compareChart.destroy();
+
+  compareChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['今、購入する場合', '将来、購入する場合'],
+      datasets: [
+        {
+          label: '頭金',
+          data: [Math.round(savNow / 10000), Math.round(savLater / 10000)],
+          backgroundColor: 'rgba(52, 73, 94, 0.7)',
+          borderRadius: 2
+        },
+        {
+          label: 'ローン返済',
+          data: [Math.round(loanNow / 10000), Math.round(loanLater / 10000)],
+          backgroundColor: 'rgba(231, 76, 60, 0.7)',
+          borderRadius: 2
+        },
+        {
+          label: '家賃（待機中）',
+          data: [0, Math.round(rent / 10000)],
+          backgroundColor: 'rgba(149, 165, 166, 0.7)',
+          borderRadius: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + ctx.raw.toLocaleString() + '万円'
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          ticks: { callback: v => v.toLocaleString() + '万' }
+        }
+      }
+    }
+  });
+}
+
+function formatMan(val) {
+  const man = Math.round(val / 10000);
+  if (man >= 10000) return (man / 10000).toFixed(1) + '億円';
+  return man.toLocaleString() + '万円';
+}
+function formatManSmall(val) {
+  if (val >= 10000) return (val / 10000).toFixed(1) + '万円';
+  return val.toLocaleString() + '円';
+}
+function fmt(val) {
+  const man = Math.round(val / 10000);
+  if (man === 0) return '-';
+  return man.toLocaleString() + '万円';
+}
+
+document.addEventListener('DOMContentLoaded', () => { calculate(); });
+</script>
+
+</body>
+</html>

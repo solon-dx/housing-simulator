@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>物件購入可能額 - 住宅シミュレーター</title>
+<link rel="stylesheet" href="common.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  .page-title {
+    text-align: center;
+    padding: 20px 0 8px;
+  }
+  .page-title h2 {
+    font-size: 1.4rem;
+    color: var(--primary);
+  }
+  .page-title p {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-top: 4px;
+  }
+
+  .compare-layout .form-group {
+    margin-bottom: 14px;
+  }
+  .compare-layout .form-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .result-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    margin-bottom: 12px;
+  }
+  .result-bar .result-label {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-bottom: 4px;
+  }
+  .result-bar .result-value {
+    font-size: 2rem;
+    font-weight: 800;
+  }
+  .result-bar .result-sub {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin-top: 4px;
+  }
+  .result-bar.blue .result-value { color: var(--primary-light); }
+  .result-bar.orange .result-value { color: var(--warning); }
+  .result-bar.red .result-value { color: var(--accent); }
+
+  .property-section {
+    background: #fef9e7;
+    border: 2px solid #f9e79f;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+  }
+  .property-section .section-header {
+    color: #d4a017;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+  }
+  .property-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  #results { display: none; }
+
+  .advice-box {
+    background: #eaf2f8;
+    border-left: 4px solid var(--primary-light);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin-top: 16px;
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  @media (max-width: 640px) {
+    .property-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><a href="index.html">🏠 住宅シミュレーター</a></div>
+  <nav>
+    <a href="sim1-affordable.html" class="active">購入可能額</a>
+    <a href="sim2-rent-vs-buy.html">賃貸VS持ち家</a>
+    <a href="sim3-now-vs-later.html">今VS将来</a>
+    <a href="sim4-mansion-vs-house.html">マンションVS戸建て</a>
+    <a href="loan-simulator.html">ローン計算</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="page-title">
+    <h2>💰 いくらぐらいの住宅を購入できる？</h2>
+    <p>年収と月々の返済可能額、2つの視点から購入可能額の目安をシミュレーションします</p>
+  </div>
+
+  <div class="card">
+    <div class="compare-layout">
+      <!-- 左: 年収ベース -->
+      <div class="compare-side left">
+        <div class="side-title">いくらまで借りられるか</div>
+
+        <div class="form-group">
+          <label>税込み年収は？</label>
+          <div class="input-wrap">
+            <input type="number" id="income" value="500" min="100" max="30000" step="10">
+            <span class="unit">万円</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>家族の収入合算可能額は？</label>
+          <div class="input-wrap">
+            <input type="number" id="familyIncome" value="0" min="0" max="20000" step="10">
+            <span class="unit">万円</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>年収に対する借入限度率は？</label>
+          <div class="input-wrap">
+            <input type="number" id="borrowRatio" value="35" min="10" max="50" step="1">
+            <span class="unit">％</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>審査金利は？</label>
+          <div class="input-wrap">
+            <input type="number" id="examRate" value="3.500" min="0.5" max="10" step="0.001">
+            <span class="unit">％</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右: 月々返済ベース -->
+      <div class="compare-side right">
+        <div class="side-title">いくらまでなら返済できるか</div>
+
+        <div class="form-group">
+          <label>毎月無理なく返済できる額は？</label>
+          <div class="input-wrap">
+            <input type="number" id="monthlyBudget" value="10.0" min="1" max="100" step="0.5">
+            <span class="unit">万円／月</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>ボーナスでの返済可能額は？</label>
+          <div class="input-wrap">
+            <input type="number" id="bonusBudget" value="0" min="0" max="500" step="1">
+            <span class="unit">万円</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>借入金利は？</label>
+          <div class="input-wrap">
+            <input type="number" id="loanRate" value="1.000" min="0.1" max="10" step="0.001">
+            <span class="unit">％</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 共通 -->
+    <div class="common-section">
+      <div class="section-header">共通項目</div>
+      <div class="form-grid" style="max-width: 400px; margin: 0 auto;">
+        <div class="form-group full">
+          <label>ローン返済期間</label>
+          <div class="input-wrap">
+            <input type="number" id="loanYears" value="35" min="5" max="50" step="1">
+            <span class="unit">年</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-calc" onclick="calculate()">計 算</button>
+  </div>
+
+  <!-- 結果 -->
+  <div id="results">
+    <div class="card">
+      <div class="card-title">📊 借入金額の目安</div>
+
+      <div class="compare-layout">
+        <div class="result-bar blue">
+          <div class="result-label">年収基準でみた場合</div>
+          <div class="result-value" id="resultIncome">-</div>
+          <div class="result-sub" id="resultIncomeNote"></div>
+        </div>
+        <div class="result-bar orange">
+          <div class="result-label">無理なく返済できる額</div>
+          <div class="result-value" id="resultMonthly">-</div>
+          <div class="result-sub" id="resultMonthlyNote"></div>
+        </div>
+      </div>
+
+      <div class="chart-container" style="height: 300px;">
+        <canvas id="compareChart"></canvas>
+      </div>
+
+      <!-- 物件価格に換算 -->
+      <div class="property-section">
+        <div class="section-header">💡 ちなみに、物件の諸経費を考慮すると…</div>
+        <div class="property-grid">
+          <div class="form-group">
+            <label>物件の諸経費率</label>
+            <div class="input-wrap">
+              <input type="number" id="expenseRate" value="7.0" min="0" max="20" step="0.1">
+              <span class="unit">％</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>頭金（準備できる自己資金）</label>
+            <div class="input-wrap">
+              <input type="number" id="downPayment" value="300" min="0" max="50000" step="10">
+              <span class="unit">万円</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn-calc" style="margin-top: 16px; background: linear-gradient(135deg, #f39c12, #d4a017);" onclick="recalcProperty()">再計算</button>
+        <div id="propertyResult" style="margin-top: 16px; display: none;">
+          <div class="compare-layout">
+            <div class="result-bar blue">
+              <div class="result-label">年収基準 → 購入可能物件価格</div>
+              <div class="result-value" id="propIncome">-</div>
+            </div>
+            <div class="result-bar orange">
+              <div class="result-label">返済額基準 → 購入可能物件価格</div>
+              <div class="result-value" id="propMonthly">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="advice-box" id="adviceBox"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  ※ シミュレーション結果はあくまで目安です。実際の借入条件は金融機関にご確認ください。<br>
+  ※ 元利均等返済方式による概算です。借入金利は保証料込みの金利をご入力ください。団信保険料・事務手数料等は含まれておりません。<br>
+  ※ 審査金利・借入可能額は金融機関ごとに異なります。詳しくは各金融機関にお問い合わせください。<br>
+  ※ 個別・具体的な税務相談や税額計算は、必ず税理士にご相談ください。<br>
+  ※ 本シミュレーションの情報は一般的な事例を想定した参考情報であり、これにより得られた結果を起因として利用者または第三者が損害を被った場合であっても、当社は一切の責任を負いかねます。<br>
+  <a href="index.html" style="color: var(--primary-light);">← TOPに戻る</a>
+</footer>
+
+<script>
+let borrowableByIncome = 0;
+let borrowableByPayment = 0;
+let compareChart = null;
+
+function calculate() {
+  const income = parseFloat(document.getElementById('income').value);
+  const familyIncome = parseFloat(document.getElementById('familyIncome').value);
+  const borrowRatio = parseFloat(document.getElementById('borrowRatio').value) / 100;
+  const examRate = parseFloat(document.getElementById('examRate').value) / 100;
+
+  const monthlyBudget = parseFloat(document.getElementById('monthlyBudget').value) * 10000;
+  const bonusBudget = parseFloat(document.getElementById('bonusBudget').value) * 10000;
+  const loanRate = parseFloat(document.getElementById('loanRate').value) / 100;
+
+  const years = parseInt(document.getElementById('loanYears').value);
+  const n = years * 12;
+
+  // ===== 年収ベース =====
+  const totalIncome = (income + familyIncome) * 10000; // 円
+  const maxAnnualPayment = totalIncome * borrowRatio;
+  const maxMonthlyPayment = maxAnnualPayment / 12;
+
+  // 審査金利での逆算: P = M × [(1+r)^n - 1] / [r × (1+r)^n]
+  const r_exam = examRate / 12;
+  borrowableByIncome = maxMonthlyPayment * (Math.pow(1 + r_exam, n) - 1) / (r_exam * Math.pow(1 + r_exam, n));
+
+  // ===== 月々返済ベース =====
+  const r_loan = loanRate / 12;
+  // 毎月返済分
+  const borrowableMonthly = monthlyBudget * (Math.pow(1 + r_loan, n) - 1) / (r_loan * Math.pow(1 + r_loan, n));
+  // ボーナス分
+  let borrowableBonus = 0;
+  if (bonusBudget > 0) {
+    const r_bonus = loanRate / 2;
+    const n_bonus = years * 2;
+    borrowableBonus = bonusBudget * (Math.pow(1 + r_bonus, n_bonus) - 1) / (r_bonus * Math.pow(1 + r_bonus, n_bonus));
+  }
+  borrowableByPayment = borrowableMonthly + borrowableBonus;
+
+  // 表示
+  document.getElementById('resultIncome').textContent = formatMan(borrowableByIncome);
+  document.getElementById('resultIncomeNote').textContent =
+    `年収${income + familyIncome}万円 × 借入限度率${(borrowRatio*100).toFixed(0)}% → 年間返済上限${Math.round(maxAnnualPayment/10000)}万円`;
+
+  document.getElementById('resultMonthly').textContent = formatMan(borrowableByPayment);
+  const monthlyNote = bonusBudget > 0
+    ? `月${(monthlyBudget/10000).toFixed(1)}万 + ボーナス${(bonusBudget/10000).toFixed(0)}万`
+    : `月々${(monthlyBudget/10000).toFixed(1)}万円返済`;
+  document.getElementById('resultMonthlyNote').textContent = monthlyNote;
+
+  // アドバイス
+  const diff = borrowableByIncome - borrowableByPayment;
+  let advice = '';
+  if (diff > 0) {
+    advice = `年収基準では<strong>${formatMan(borrowableByIncome)}</strong>まで借入可能ですが、`
+      + `無理のない返済を考えると<strong>${formatMan(borrowableByPayment)}</strong>が目安です。`
+      + `<br>銀行が貸してくれる額と、無理なく返せる額は異なりますので、返済額ベースでの検討をおすすめします。`;
+  } else {
+    advice = `返済額ベースでは<strong>${formatMan(borrowableByPayment)}</strong>借入可能ですが、`
+      + `年収基準では<strong>${formatMan(borrowableByIncome)}</strong>までとなります。`
+      + `<br>審査上は年収基準が上限となるため、こちらが実際の借入限度額の目安です。`;
+  }
+  document.getElementById('adviceBox').innerHTML = advice;
+
+  // グラフ
+  drawChart();
+
+  // 物件価格も自動計算
+  recalcProperty();
+
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+function recalcProperty() {
+  if (borrowableByIncome === 0 && borrowableByPayment === 0) return;
+
+  const expenseRate = parseFloat(document.getElementById('expenseRate').value) / 100;
+  const downPayment = parseFloat(document.getElementById('downPayment').value) * 10000;
+
+  // 物件価格 = (借入可能額 + 頭金) / (1 + 諸経費率)
+  const propByIncome = (borrowableByIncome + downPayment) / (1 + expenseRate);
+  const propByPayment = (borrowableByPayment + downPayment) / (1 + expenseRate);
+
+  document.getElementById('propIncome').textContent = formatMan(propByIncome);
+  document.getElementById('propMonthly').textContent = formatMan(propByPayment);
+  document.getElementById('propertyResult').style.display = 'block';
+}
+
+function drawChart() {
+  const ctx = document.getElementById('compareChart').getContext('2d');
+  if (compareChart) compareChart.destroy();
+
+  compareChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['年収基準でみた場合', '無理なく返済できる額'],
+      datasets: [{
+        data: [Math.round(borrowableByIncome / 10000), Math.round(borrowableByPayment / 10000)],
+        backgroundColor: ['rgba(41, 128, 185, 0.7)', 'rgba(243, 156, 18, 0.7)'],
+        borderColor: ['rgba(41, 128, 185, 1)', 'rgba(243, 156, 18, 1)'],
+        borderWidth: 2,
+        borderRadius: 6,
+        barPercentage: 0.5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.raw.toLocaleString() + '万円'
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: v => v.toLocaleString() + '万'
+          }
+        }
+      }
+    }
+  });
+}
+
+function formatMan(val) {
+  const man = Math.round(val / 10000);
+  if (man >= 10000) {
+    return (man / 10000).toFixed(2) + '億円';
+  }
+  return man.toLocaleString() + '万円';
+}
+
+// ページ読み込み時に自動計算
+document.addEventListener('DOMContentLoaded', () => {
+  calculate();
+});
+</script>
+
+</body>
+</html>

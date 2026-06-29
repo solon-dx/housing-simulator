@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分譲マンション VS 一戸建て - 住宅シミュレーター</title>
+<link rel="stylesheet" href="common.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  .page-title { text-align: center; padding: 20px 0 8px; }
+  .page-title h2 { font-size: 1.4rem; color: var(--primary); }
+  .page-title p { font-size: 0.85rem; color: var(--text-light); margin-top: 4px; }
+  #results { display: none; }
+
+  .compare-side.left .side-title { color: var(--primary-light); border-color: var(--primary-light); }
+  .compare-side.right .side-title { color: var(--warning); border-color: var(--warning); }
+
+  .form-group { margin-bottom: 14px; }
+  .form-group:last-child { margin-bottom: 0; }
+  .form-group .hint {
+    font-size: 0.72rem;
+    color: var(--text-light);
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+
+  .summary-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .summary-card {
+    text-align: center;
+    padding: 20px 12px;
+    border-radius: 12px;
+    border: 2px solid;
+  }
+  .summary-card.mansion { border-color: var(--primary-light); background: rgba(41,128,185,0.04); }
+  .summary-card.house { border-color: var(--warning); background: rgba(243,156,18,0.04); }
+  .summary-card .sc-label { font-size: 0.85rem; color: var(--text-light); margin-bottom: 6px; }
+  .summary-card .sc-value { font-size: 1.8rem; font-weight: 800; }
+  .summary-card.mansion .sc-value { color: var(--primary-light); }
+  .summary-card.house .sc-value { color: var(--warning); }
+  .summary-card .sc-sub { font-size: 0.8rem; color: var(--text-light); margin-top: 6px; }
+
+  .diff-box {
+    text-align: center;
+    padding: 16px;
+    background: #fef9e7;
+    border: 2px solid #f9e79f;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+  .diff-box strong { color: var(--accent); font-size: 1.3rem; }
+
+  .advice-box {
+    background: #eaf2f8;
+    border-left: 4px solid var(--primary-light);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin-top: 16px;
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin-top: 12px;
+  }
+  .compare-table th { padding: 10px 12px; font-weight: 600; white-space: nowrap; }
+  .compare-table th:first-child { background: #f8f9fa; color: var(--text); text-align: left; }
+  .compare-table th.mansion { background: var(--primary-light); color: #fff; }
+  .compare-table th.house { background: var(--warning); color: #fff; }
+  .compare-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: right; }
+  .compare-table td:first-child { text-align: left; font-weight: 600; color: var(--text-light); }
+  .compare-table tr:nth-child(even) { background: #f8f9fa; }
+  .compare-table tr:last-child td { border-bottom: 2px solid var(--primary); font-weight: 700; }
+
+  .monthly-ref {
+    text-align: center;
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: var(--text-light);
+  }
+  .monthly-ref strong { color: var(--text); }
+
+  @media (max-width: 640px) {
+    .summary-cards { grid-template-columns: 1fr; }
+    .summary-card .sc-value { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><a href="index.html">🏠 住宅シミュレーター</a></div>
+  <nav>
+    <a href="sim1-affordable.html">購入可能額</a>
+    <a href="sim2-rent-vs-buy.html">賃貸VS持ち家</a>
+    <a href="sim3-now-vs-later.html">今VS将来</a>
+    <a href="sim4-mansion-vs-house.html" class="active">マンションVS戸建て</a>
+    <a href="loan-simulator.html">ローン計算</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="page-title">
+    <h2>🏢 買うならマンション？それとも一戸建て？</h2>
+    <p>管理費・修繕費・固定資産税を含めたトータル支出で比較してみましょう</p>
+  </div>
+
+  <div class="card">
+    <div class="compare-layout">
+      <!-- 左: マンション -->
+      <div class="compare-side left">
+        <div class="side-title">マンションの購入</div>
+
+        <div class="form-group">
+          <label>購入価格</label>
+          <div class="input-wrap">
+            <input type="number" id="mansionPrice" value="3800" min="100" max="50000" step="100">
+            <span class="unit">万円</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>うち建物部分割合</label>
+          <div class="input-wrap">
+            <input type="number" id="mansionBuildRatio" value="40.0" min="10" max="90" step="1">
+            <span class="unit">％</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>取得時の諸経費率</label>
+          <div class="input-wrap">
+            <input type="number" id="mansionExpense" value="6.000" min="0" max="20" step="0.1">
+            <span class="unit">％</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>修繕積立金・管理費等</label>
+          <div class="input-wrap">
+            <input type="number" id="mansionMaintenance" value="3.0" min="0" max="20" step="0.1">
+            <span class="unit">万円／月</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>管理費上昇率</label>
+          <div class="input-wrap">
+            <input type="number" id="mansionMaintRise" value="1.0" min="0" max="10" step="0.1">
+            <span class="unit">％／年</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>将来の大規模修繕費</label>
+          <div class="input-wrap">
+            <input type="number" id="mansionBigRepair" value="300" min="0" max="5000" step="10">
+            <span class="unit">万円</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>自宅部分のリフォーム費用</label>
+          <div class="input-wrap">
+            <input type="number" id="mansionReform" value="300" min="0" max="5000" step="10">
+            <span class="unit">万円</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右: 一戸建て -->
+      <div class="compare-side right">
+        <div class="side-title">一戸建ての購入</div>
+
+        <div class="form-group">
+          <label>購入価格</label>
+          <div class="input-wrap">
+            <input type="number" id="housePrice" value="4500" min="100" max="50000" step="100">
+            <span class="unit">万円</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>うち土地代</label>
+          <div class="input-wrap">
+            <input type="number" id="houseLand" value="1300" min="0" max="50000" step="100">
+            <span class="unit">万円</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>取得時の諸経費率</label>
+          <div class="input-wrap">
+            <input type="number" id="houseExpense" value="4.000" min="0" max="20" step="0.1">
+            <span class="unit">％</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>年間維持費</label>
+          <div class="input-wrap">
+            <input type="number" id="houseAnnualMaint" value="5.0" min="0" max="100" step="0.5">
+            <span class="unit">万円／年</span>
+          </div>
+          <div class="hint">※ 庭の手入れ・保険料等（固定資産税は自動計算）</div>
+        </div>
+        <div class="form-group">
+          <label>将来のリフォーム費用</label>
+          <div class="input-wrap">
+            <input type="number" id="houseReform" value="200" min="0" max="5000" step="10">
+            <span class="unit">万円</span>
+          </div>
+          <div class="hint">※ 外壁・屋根・水回り等の修繕想定</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 共通 -->
+    <div class="common-section">
+      <div class="section-header">共通項目</div>
+      <div class="form-grid" style="max-width: 500px; margin: 0 auto;">
+        <div class="form-group">
+          <label>自己資金（頭金）</label>
+          <div class="input-wrap">
+            <input type="number" id="downPayment" value="500" min="0" max="50000" step="10">
+            <span class="unit">万円</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>ローン返済期間</label>
+          <div class="input-wrap">
+            <input type="number" id="loanYears" value="35" min="5" max="50" step="1">
+            <span class="unit">年</span>
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>借入金利</label>
+          <div class="input-wrap">
+            <input type="number" id="loanRate" value="1.500" min="0.1" max="10" step="0.001">
+            <span class="unit">％</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-calc" onclick="calculate()">計 算</button>
+  </div>
+
+  <!-- 結果 -->
+  <div id="results">
+    <div class="card">
+      <div class="card-title">📊 総支出額の比較（40年間の総支出額）</div>
+
+      <div class="summary-cards">
+        <div class="summary-card mansion">
+          <div class="sc-label">マンション 生涯住居費総額</div>
+          <div class="sc-value" id="totalMansion">-</div>
+          <div class="sc-sub" id="subMansion"></div>
+        </div>
+        <div class="summary-card house">
+          <div class="sc-label">一戸建て 生涯住居費総額</div>
+          <div class="sc-value" id="totalHouse">-</div>
+          <div class="sc-sub" id="subHouse"></div>
+        </div>
+      </div>
+
+      <div class="diff-box" id="diffBox"></div>
+
+      <div class="monthly-ref" id="monthlyRef"></div>
+
+      <div class="chart-container" style="height: 380px; margin-top: 20px;">
+        <canvas id="compareChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 内訳比較</div>
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="mansion">マンション</th>
+            <th class="house">一戸建て</th>
+          </tr>
+        </thead>
+        <tbody id="compareBody"></tbody>
+      </table>
+      <div class="advice-box" id="adviceBox"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  ※ シミュレーション結果はあくまで目安です。実際の費用は個別の条件により異なります。<br>
+  ※ 元利均等返済方式による概算です。借入金利は保証料込みの金利をご入力ください。団信保険料・事務手数料等は含まれておりません。<br>
+  ※ 固定資産税は中古住宅を前提とした概算です（新築減額特例は適用していません）。<br>
+  ※ 固定資産税評価額は購入価格の約60%として算出しています。実際の税額は市区町村の評価により異なります。<br>
+  ※ 建物の経年減価はRC造47年・木造22年の耐用年数に基づく概算です。<br>
+  ※ 個別・具体的な税務相談や税額計算は、必ず税理士にご相談ください。<br>
+  ※ 本シミュレーションの情報は一般的な事例を想定した参考情報であり、これにより得られた結果を起因として利用者または第三者が損害を被った場合であっても、当社は一切の責任を負いかねます。<br>
+  <a href="index.html" style="color: var(--primary-light);">← TOPに戻る</a>
+</footer>
+
+<script>
+let compareChart = null;
+
+/**
+ * 固定資産税の概算計算
+ * @param {number} price 購入価格（万円）
+ * @param {number} buildPrice 建物価格（万円）
+ * @param {number} landPrice 土地価格（万円）
+ * @param {boolean} isMansion マンションか
+ * @param {number} years 計算年数
+ * @returns {number} 固定資産税累計（万円）
+ */
+function calcPropertyTax(price, buildPrice, landPrice, isMansion, years) {
+  // 固定資産税評価額 ≒ 購入価格の60%
+  const assessRatio = 0.60;
+  const buildAssessed = buildPrice * assessRatio;
+  const landAssessed = landPrice * assessRatio;
+
+  const taxRate = 0.014;   // 固定資産税率 1.4%
+  const cityRate = 0.003;  // 都市計画税率 0.3%
+
+  // 建物の耐用年数（RC造47年、木造22年）
+  const usefulLife = isMansion ? 47 : 22;
+  const residualRate = 0.20; // 残存率20%
+
+  // 中古住宅を前提とするため、新築減額特例は適用しない
+
+  let totalTax = 0;
+  for (let y = 0; y < years; y++) {
+    // 建物の経年減価（線形）
+    let depreciation;
+    if (y < usefulLife) {
+      depreciation = 1.0 - (1.0 - residualRate) * (y / usefulLife);
+    } else {
+      depreciation = residualRate;
+    }
+
+    const buildVal = buildAssessed * depreciation;
+
+    // 固定資産税（土地は住宅用地特例 1/6）
+    const buildTax = buildVal * taxRate;
+    const landTax = landAssessed * taxRate / 6;
+
+    // 都市計画税（土地は住宅用地特例 1/3）
+    const buildCity = buildVal * cityRate;
+    const landCity = landAssessed * cityRate / 3;
+
+    totalTax += buildTax + landTax + buildCity + landCity;
+  }
+
+  return totalTax;
+}
+
+function calculate() {
+  const compareYears = 40; // 40年間固定
+
+  // ===== マンション =====
+  const mPrice = parseFloat(document.getElementById('mansionPrice').value);
+  const mBuildRatio = parseFloat(document.getElementById('mansionBuildRatio').value) / 100;
+  const mExpRate = parseFloat(document.getElementById('mansionExpense').value) / 100;
+  const mMaintMonthly = parseFloat(document.getElementById('mansionMaintenance').value);
+  const mMaintRise = parseFloat(document.getElementById('mansionMaintRise').value) / 100;
+  const mBigRepair = parseFloat(document.getElementById('mansionBigRepair').value);
+  const mReform = parseFloat(document.getElementById('mansionReform').value);
+
+  const mBuildPrice = mPrice * mBuildRatio;
+  const mLandPrice = mPrice * (1 - mBuildRatio);
+
+  // ===== 一戸建て =====
+  const hPrice = parseFloat(document.getElementById('housePrice').value);
+  const hLand = parseFloat(document.getElementById('houseLand').value);
+  const hExpRate = parseFloat(document.getElementById('houseExpense').value) / 100;
+  const hAnnualMaint = parseFloat(document.getElementById('houseAnnualMaint').value);
+  const hReform = parseFloat(document.getElementById('houseReform').value);
+
+  const hBuildPrice = hPrice - hLand;
+
+  // ===== 共通 =====
+  const downPayment = parseFloat(document.getElementById('downPayment').value);
+  const loanYears = parseInt(document.getElementById('loanYears').value);
+  const loanRate = parseFloat(document.getElementById('loanRate').value) / 100;
+
+  const r = loanRate / 12;
+  const n = loanYears * 12;
+
+  // ===== マンション計算 =====
+  const mLoan = mPrice - downPayment; // 諸経費はローンに含めない（参考サイト準拠）
+  const mMonthlyLoan = mLoan > 0 ? mLoan * 10000 * r * Math.pow(1+r,n) / (Math.pow(1+r,n)-1) : 0;
+  const mTotalLoan = Math.round(mMonthlyLoan * n / 10000); // 万円
+
+  // 管理費・修繕積立金（上昇率考慮）
+  let mTotalMaint = 0;
+  for (let y = 0; y < compareYears; y++) {
+    mTotalMaint += mMaintMonthly * 12 * Math.pow(1 + mMaintRise, y);
+  }
+  mTotalMaint = Math.round(mTotalMaint);
+
+  // 固定資産税
+  const mTax = Math.round(calcPropertyTax(mPrice, mBuildPrice, mLandPrice, true, compareYears));
+
+  // 大規模修繕費を管理費に合算（参考サイト準拠の表示）
+  const mMaintDisplay = mTotalMaint + mBigRepair;
+
+  const mTotal = downPayment + mTotalLoan + mMaintDisplay + mReform + mTax;
+
+  // ===== 一戸建て計算 =====
+  const hLoan = hPrice - downPayment;
+  const hMonthlyLoan = hLoan > 0 ? hLoan * 10000 * r * Math.pow(1+r,n) / (Math.pow(1+r,n)-1) : 0;
+  const hTotalLoan = Math.round(hMonthlyLoan * n / 10000);
+
+  const hTotalMaint = Math.round(hAnnualMaint * compareYears);
+
+  // 固定資産税
+  const hTax = Math.round(calcPropertyTax(hPrice, hBuildPrice, hLand, false, compareYears));
+
+  const hTotal = downPayment + hTotalLoan + hReform + hTotalMaint + hTax;
+
+  // ===== 結果表示 =====
+  document.getElementById('totalMansion').textContent = fmtMan(mTotal);
+  const mMonthlyTotal = Math.round(mMonthlyLoan + mMaintMonthly * 10000);
+  document.getElementById('subMansion').textContent = `毎月のローン返済+維持管理費: ${fmtSmall(mMonthlyTotal)}`;
+
+  document.getElementById('totalHouse').textContent = fmtMan(hTotal);
+  document.getElementById('subHouse').textContent = `毎月のローン返済+維持管理費: ${fmtSmall(Math.round(hMonthlyLoan + hAnnualMaint*10000/12))}`;
+
+  // 参考: 月額
+  document.getElementById('monthlyRef').innerHTML =
+    `（参考）毎月のローン返済＋維持管理費: マンション <strong>${fmtSmall(mMonthlyTotal)}</strong> / 一戸建て <strong>${fmtSmall(Math.round(hMonthlyLoan + hAnnualMaint*10000/12))}</strong>`;
+
+  // 差額
+  const diff = mTotal - hTotal;
+  const diffBox = document.getElementById('diffBox');
+  if (Math.abs(diff) < 10) {
+    diffBox.innerHTML = `生涯住居費総額はほぼ同等です`;
+  } else if (diff > 0) {
+    diffBox.innerHTML = `生涯住居費総額は、一戸建ての方がマンションより<strong>${fmtMan(Math.abs(diff))}</strong>安くなります。`;
+  } else {
+    diffBox.innerHTML = `生涯住居費総額は、マンションの方が一戸建てより<strong>${fmtMan(Math.abs(diff))}</strong>安くなります。`;
+  }
+
+  // ===== 内訳テーブル =====
+  const tbody = document.getElementById('compareBody');
+  tbody.innerHTML = '';
+  const rows = [
+    ['購入時自己資金', fmtT(downPayment), fmtT(downPayment)],
+    ['ローン返済額', fmtT(mTotalLoan), fmtT(hTotalLoan)],
+    ['修繕積立金・管理費等', fmtT(mMaintDisplay), '-'],
+    ['自宅部分修繕費', fmtT(mReform), fmtT(hReform)],
+    ['年間維持費（累計）', '-', fmtT(hTotalMaint)],
+    ['概算固定資産税', fmtT(mTax), fmtT(hTax)],
+    ['生涯住居費総額（合計）', fmtT(mTotal), fmtT(hTotal)]
+  ];
+  rows.forEach(([label, m, h]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${label}</td><td>${m}</td><td>${h}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // ===== グラフ =====
+  drawChart(downPayment, mTotalLoan, mMaintDisplay, mReform, mTax,
+            downPayment, hTotalLoan, hTotalMaint, hReform, hTax);
+
+  // ===== アドバイス =====
+  const advice = document.getElementById('adviceBox');
+  let text = '';
+  if (diff > 0) {
+    text = `生涯住居費総額は、一戸建ての方が<strong>${fmtMan(Math.abs(diff))}</strong>安い結果となりました。`;
+    text += `<br>マンションは管理費・修繕積立金（上昇率${(mMaintRise*100).toFixed(1)}%/年込み＋大規模修繕費）が累計<strong>${fmtMan(mMaintDisplay)}</strong>と大きな負担になっています。`;
+  } else {
+    text += `生涯住居費総額は、マンションの方が<strong>${fmtMan(Math.abs(diff))}</strong>安い結果となりました。`;
+  }
+  text += `<br><br>💡 ただし、マンションには共用設備（エントランス・宅配BOX等）の利便性、一戸建てには自由な増改築や駐車場代不要といったコストに表れないメリットがあります。`;
+  advice.innerHTML = text;
+
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+function drawChart(mDown, mLoan, mMaint, mReform, mTax,
+                   hDown, hLoan, hMaint, hReform, hTax) {
+  const ctx = document.getElementById('compareChart').getContext('2d');
+  if (compareChart) compareChart.destroy();
+
+  compareChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['マンション', '一戸建て'],
+      datasets: [
+        { label: '頭金', data: [mDown, hDown], backgroundColor: 'rgba(52,73,94,0.7)', borderRadius: 2 },
+        { label: '元利返済額', data: [mLoan, hLoan], backgroundColor: 'rgba(231,76,60,0.7)', borderRadius: 2 },
+        { label: '自宅部分修繕費', data: [mReform, hReform], backgroundColor: 'rgba(241,196,15,0.7)', borderRadius: 2 },
+        { label: '修繕積立金・管理費等', data: [mMaint, hMaint], backgroundColor: 'rgba(149,165,166,0.7)', borderRadius: 2 },
+        { label: '固定資産税', data: [mTax, hTax], backgroundColor: 'rgba(231,76,60,0.4)', borderRadius: 2 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top' },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw.toLocaleString() + '万円' } }
+      },
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true, beginAtZero: true, ticks: { callback: v => v.toLocaleString() + '万' } }
+      }
+    }
+  });
+}
+
+function fmtMan(val) {
+  if (val >= 10000) return (val / 10000).toFixed(1) + '億円';
+  return val.toLocaleString() + '万円';
+}
+function fmtSmall(val) {
+  if (val >= 10000) return (val / 10000).toFixed(1) + '万円';
+  return val.toLocaleString() + '円';
+}
+function fmtT(val) {
+  if (val === 0) return '-';
+  return val.toLocaleString() + '万円';
+}
+
+document.addEventListener('DOMContentLoaded', () => { calculate(); });
+</script>
+
+</body>
+</html>

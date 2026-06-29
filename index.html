@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>住宅シミュレーター</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .hero {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: #fff;
+    text-align: center;
+    padding: 40px 24px;
+  }
+  .hero h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .hero p {
+    font-size: 0.95rem;
+    opacity: 0.85;
+  }
+
+  .sim-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 8px;
+  }
+
+  .sim-card {
+    background: var(--card);
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    padding: 28px 24px;
+    text-decoration: none;
+    color: var(--text);
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .sim-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+  .sim-card .sim-number {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 0 0 8px 0;
+  }
+  .sim-card .sim-icon {
+    font-size: 2.4rem;
+    flex-shrink: 0;
+    margin-top: 8px;
+  }
+  .sim-card .sim-content {
+    flex: 1;
+    padding-top: 8px;
+  }
+  .sim-card .sim-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+  .sim-card .sim-desc {
+    font-size: 0.82rem;
+    color: var(--text-light);
+    line-height: 1.5;
+  }
+  .sim-card .sim-arrow {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    color: var(--border);
+    transition: color 0.2s;
+  }
+  .sim-card:hover .sim-arrow { color: var(--primary-light); }
+
+  .sim-card.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .sim-card.disabled .sim-number {
+    background: #95a5a6;
+  }
+  .coming-soon {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: #95a5a6;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  /* ローンシミュレーターもカードとして表示 */
+  .sim-card.loan .sim-number { background: var(--accent); }
+
+  .section-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-light);
+    margin-bottom: 12px;
+    margin-top: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 1.3rem; }
+    .sim-grid { grid-template-columns: 1fr; }
+    .sim-card { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>🏠 住宅シミュレーター</h1>
+  <p>不動産のプロが使う、かんたんシミュレーション</p>
+</div>
+
+<div class="container">
+  <div class="section-label">かんたんシミュレーション</div>
+
+  <div class="sim-grid">
+    <a href="sim1-affordable.html" class="sim-card">
+      <span class="sim-number">Simulation 1</span>
+      <div class="sim-icon">💰</div>
+      <div class="sim-content">
+        <div class="sim-title">物件購入可能額</div>
+        <div class="sim-desc">年収や月々の返済可能額から、購入できる物件価格の目安がわかります</div>
+      </div>
+      <span class="sim-arrow">›</span>
+    </a>
+
+    <a href="sim2-rent-vs-buy.html" class="sim-card">
+      <span class="sim-number">Simulation 2</span>
+      <div class="sim-icon">🏘️</div>
+      <div class="sim-content">
+        <div class="sim-title">賃貸 VS 持ち家</div>
+        <div class="sim-desc">賃貸と持ち家の生涯住居コストを比較して、どちらがお得かシミュレーション</div>
+      </div>
+      <span class="sim-arrow">›</span>
+    </a>
+
+    <a href="sim3-now-vs-later.html" class="sim-card">
+      <span class="sim-number">Simulation 3</span>
+      <div class="sim-icon">⏳</div>
+      <div class="sim-content">
+        <div class="sim-title">今すぐ購入 VS 頭金を貯めてから</div>
+        <div class="sim-desc">今買うか、頭金を貯めてから買うか、総支払額で比較します</div>
+      </div>
+      <span class="sim-arrow">›</span>
+    </a>
+
+    <a href="sim4-mansion-vs-house.html" class="sim-card">
+      <span class="sim-number">Simulation 4</span>
+      <div class="sim-icon">🏢</div>
+      <div class="sim-content">
+        <div class="sim-title">分譲マンション VS 一戸建て</div>
+        <div class="sim-desc">管理費や修繕費を含めた総コストでマンションと一戸建てを比較</div>
+      </div>
+      <span class="sim-arrow">›</span>
+    </a>
+  </div>
+
+  <div class="section-label">詳細シミュレーション</div>
+
+  <div class="sim-grid">
+    <a href="loan-simulator.html" class="sim-card loan">
+      <span class="sim-number">Loan Sim</span>
+      <div class="sim-icon">📊</div>
+      <div class="sim-content">
+        <div class="sim-title">住宅ローンシミュレーション</div>
+        <div class="sim-desc">借入額・金利・期間から月々返済額・総返済額を計算。返済表・グラフ付き</div>
+      </div>
+      <span class="sim-arrow">›</span>
+    </a>
+  </div>
+</div>
+
+<footer>
+  ※ シミュレーション結果はあくまで目安です。実際の借入条件は金融機関にご確認ください。<br>
+  ※ 各シミュレーションは概算であり、借入金利は保証料込みの金利をご入力ください。団信保険料・事務手数料等は含まれておりません。<br>
+  ※ 固定資産税の計算は中古住宅を前提としています（新築減額特例は適用していません）。<br>
+  ※ 個別・具体的な税務相談や税額計算は、必ず税理士にご相談ください。<br>
+  ※ 本サイトの情報は一般的な事例を想定した参考情報であり、具体的な税務相談や税額計算に対応するものではありません。本シミュレーションにより得られた結果を起因として、利用者または第三者が損害を被った場合であっても、当社は一切の責任を負いかねます。
+</footer>
+
+</body>
+</html>
