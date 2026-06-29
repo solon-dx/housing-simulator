@@ -244,7 +244,7 @@
     .result-tab { text-align: center; }
   }
 </style>
-<script>if('scrollRestoration' in history) history.scrollRestoration='manual'; window.scrollTo(0,0); document.addEventListener('DOMContentLoaded',()=>window.scrollTo(0,0)); window.addEventListener('load',()=>setTimeout(()=>window.scrollTo(0,0),0));</script>
+<script>if('scrollRestoration' in history) history.scrollRestoration='manual'; window.scrollTo(0,0); document.addEventListener('DOMContentLoaded',()=>window.scrollTo(0,0)); window.addEventListener('pageshow',()=>{window.scrollTo(0,0);setTimeout(()=>window.scrollTo(0,0),50);setTimeout(()=>window.scrollTo(0,0),150);});</script>
 </head>
 <body>
 
