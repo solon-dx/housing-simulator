@@ -114,7 +114,17 @@
   .compare-table tr:last-child td { border-bottom: 2px solid var(--primary); font-weight: 700; }
 
   @media (max-width: 640px) {
-    .age-row { grid-template-columns: auto 1fr auto; font-size: 0.8rem; }
+    .age-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 6px;
+      font-size: 0.8rem;
+      align-items: center;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .age-row:last-of-type { border-bottom: none; }
     .age-row input { width: 50px; font-size: 0.9rem; padding: 6px 4px; }
   }
 </style>
